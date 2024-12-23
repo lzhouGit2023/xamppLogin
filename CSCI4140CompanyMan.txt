@@ -1,0 +1,54 @@
+<html>
+     <body>
+	   <?php
+		ini_set('display_errors', '1');
+		error_reporting(E_ALL);
+
+		include 'CSCI4140Assi3.php';
+       	        include 'CSCI4140A3HTML.html';
+    try{
+        $pdo = new PDO($dsn,$user,$pass,$opt);
+        $pOrderNo = $_POST["poNo"];
+        $stmt = $pdo->query("Select count(*) from POrder where poNo = $pOrderNo;");	
+	$numRows=$stmt->fetch();
+        if($numRows[0]==0){
+	   echo "The purchase order number doesn't exist. Please try again.";
+	   die();        
+        }
+        else{//this means there exists rows for the purchase order number
+	   $stmt = $pdo->query("Select * from Orderline where poNo = $pOrderNo;");
+           $isValid = true;//check validity above
+           while($rows=$stmt->fetch()){
+  	     $stmt2 = $pdo->query("Select qtyOnHand from inventory where partNo = $rows["poNo"];");//WE ACTUALLY NEED A COLUMN FOR PARTNO!
+             $qOnHand = $stmt2->fetch();   
+             if($qOnHand<$rows["qty"]){//we could also use other restrictions. This one is quite simple
+		$isValid = false;
+                 echo "Not enough products on hand to support transaction for part $rows["poNo"]";//WE ACTUALLY NEED A COLUMN FOR PARTNO!
+                 die();
+             //ALSO UPDATE SUCCESS AND FAILURE HERE
+           }
+           $stmt = $pdo->query("Select * from Orderline where poNo = $pOrderNo;");
+	   while($rows=$stmt->fetch()){
+		$ClientCur=$pdo->query("Select clientId from Client where poNo = $rows["pono"];");//change this I'm a bit confused!!!!!!!!!
+                $ClientIden=$ClientCur->fetch();
+
+                $execQuery=$pdo->prepare("update inventory set qtyOnHand=qtyOnHand-$rows["qty"] where partNo = $rows["poNo"];");//AGAIN CHANGE!
+	   	$execQuery->execute();
+           	$execQuery=$pdo->prepare("update client set moneyOwed=moneyOwed+$rows["priceOrdered"] where clientId = $ClientIden[0];");
+	   	$execQuery->execute();
+           }
+                echo "Transaction is successful for $ClientCur[0].";//we should also probably mention the purchase order for the client 
+        }
+      
+   }
+   catch( PDOException $Exception ) {
+	  echo "Error! Please input something valid in the input box";
+    }
+  //  path to file:file:///C:/A3Xampp/htdocs/CSCI4140A3HTML.html
+  //  php connection was all successful!! Please no comments out
+  //  of the html tags!!!!!!!!!! 
+     ?>
+     </body>
+</html>
+
+
